@@ -1,0 +1,15 @@
+﻿.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.streamlit/secrets.toml
+
+desktop.ini
+*.zip
+
+data/codex_backups/
+data/runtime/
+*.log
+*.db
