@@ -1,2 +1,0 @@
-ChatGPT GitHub connection test successful.
-This file was created directly from ChatGPT to verify write access.
