@@ -27,6 +27,7 @@ from workflow.assignment import (
 )
 from workflow.errors import workflow_error_detail
 from workflow.review import WorkflowCancelled, ensure_workflow_not_cancelled
+from workflow.source_quality import sanitize_unverified_links, verified_urls_from_source_context
 
 
 EmployeeResult = tuple[dict, str, int]
@@ -155,6 +156,10 @@ def run_employee_workstreams(
                 handoff_content,
                 output_instruction=output_instruction,
                 required_markers=EMPLOYEE_RESULT_MARKERS,
+            )
+            employee_answer = sanitize_unverified_links(
+                employee_answer,
+                verified_urls_from_source_context(source_context),
             )
             ensure_workflow_not_cancelled(task_id)
             if employee_answer == EMPTY_ANSWER_MESSAGE:
@@ -294,4 +299,3 @@ def run_employee_workstreams(
         successful_results=successful_results,
         failed_employee_names=failed_employee_names,
     )
-

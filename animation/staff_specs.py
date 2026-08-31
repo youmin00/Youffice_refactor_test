@@ -7,6 +7,7 @@ center at x=256 and the soles at y=488, so neither the app nor the animation
 lab needs asset-specific crop guesses.
 """
 
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -86,7 +87,15 @@ def resolve_action_sheet(slug: str, action: str) -> tuple[str, int]:
     return f"animation_v2/{slug}/{fallback}", DEFAULT_FRAME_COUNT
 
 
+@lru_cache(maxsize=1)
 def build_staff_app_specs() -> dict[tuple[str, str], dict[str, object]]:
+    """Build the shared app animation catalog once per Python process.
+
+    The office screen, app entry point, and animation lab all consume this
+    immutable-by-convention catalog.  Caching avoids repeating the same asset
+    existence checks and dictionary construction during Streamlit reruns.
+    """
+
     specs: dict[tuple[str, str], dict[str, object]] = {}
     for slug, staff in STAFF.items():
         for action in ACTION_LABEL_TO_KEY.values():

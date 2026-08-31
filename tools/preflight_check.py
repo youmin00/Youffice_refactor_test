@@ -69,6 +69,8 @@ MODULES_TO_IMPORT = [
     "workflow.review_execution",
     "workflow.engine",
     "workflow.external_review",
+    "workflow.idea_scout",
+    "workflow.web_search",
     "workflow.team_consultation",
     "workflow.recovery",
     "workflow.reporting",
@@ -131,6 +133,13 @@ REQUIRED_NAMES_BY_MODULE = {
     "workflow.external_review": [
         "external_review_status",
         "run_external_cross_review",
+    ],
+    "workflow.idea_scout": [
+        "collect_idea_scout_brief",
+        "should_auto_explore_idea",
+    ],
+    "workflow.web_search": [
+        "search_free_web",
     ],
     "workflow.team_consultation": [
         "select_team_consultants",

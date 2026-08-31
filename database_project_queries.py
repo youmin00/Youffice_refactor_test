@@ -64,3 +64,18 @@ def list_messages(
             (project_id,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def get_latest_message_id(
+    connect: ConnectionFactory,
+    project_id: int,
+    database_path: Path,
+) -> int:
+    """Return a lightweight cursor for detecting project chat changes."""
+
+    with connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT COALESCE(MAX(id), 0) AS message_id FROM messages WHERE project_id = ?",
+            (project_id,),
+        ).fetchone()
+    return int(row["message_id"])

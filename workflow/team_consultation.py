@@ -13,6 +13,7 @@ from conversation.response_validator import remove_thinking
 from database import add_message, list_employee_activities, set_employee_activity
 from workflow.assignment import ACTIVE_EMPLOYEE_ID, employee_workstream
 from workflow.errors import workflow_error_detail
+from workflow.source_quality import sanitize_unverified_links
 
 
 _CONSULTATION_LOCK = threading.Lock()
@@ -147,6 +148,7 @@ def _consult_employee(
             "[권장 방향과 이유]\n유키와 현재 결정의 이유를 다시 확인해 주세요.\n"
             "[확인 방법]\n현재 정보가 부족합니다.",
         )
+        answer = sanitize_unverified_links(answer)
         add_message(project_id, "assistant", answer, employee["id"])
         set_employee_activity(
             project_id,
@@ -218,6 +220,7 @@ def _summarize_consultation(
             "[다음 한 가지]\n지금 가장 중요한 조건을 한 문장으로 알려주세요.\n"
             "[아직 확인할 점]\n현재 정보가 부족합니다.",
         )
+        answer = sanitize_unverified_links(answer)
         add_message(project_id, "assistant", answer, manager_profile["id"])
         set_employee_activity(
             project_id,

@@ -12,7 +12,6 @@ from pathlib import Path
 import streamlit as st
 import markdown as markdown_renderer
 
-from animation.lab import render_animation_lab
 from ui.styles import apply_global_styles
 from ui.sidebar import employee_card_html
 from ui.office_dialogs import (
@@ -61,6 +60,11 @@ from workflow.external_review import (
     external_review_status,
     run_external_cross_review,
 )
+from workflow.idea_scout import (
+    collect_idea_scout_brief,
+    should_auto_explore_idea,
+)
+from workflow.source_quality import sanitize_unverified_links, verified_source_urls
 from workflow.reporting import (
     build_saved_meeting_context,
     generate_project_report,
@@ -186,6 +190,7 @@ from database import (
     finish_employee_result,
     finish_team_meeting,
     get_pending_clarification_request,
+    get_latest_message_id,
     get_project,
     get_team_meeting,
     get_task_for_source_message,
@@ -236,6 +241,8 @@ st.set_page_config(
 )
 
 if st.query_params.get("animation_lab") == "1":
+    from animation.lab import render_animation_lab
+
     render_animation_lab()
     st.stop()
 
@@ -305,12 +312,21 @@ for current_report in current_reports:
             )
         )
 if st.session_state.get("loaded_project_id") != current_project_id:
-    st.session_state.messages = (
+    loaded_messages = (
         list_messages(current_project_id)
         if current_project_id is not None
         else []
     )
+    st.session_state.messages = loaded_messages
     st.session_state.loaded_project_id = current_project_id
+    st.session_state.loaded_project_message_id = (
+        int(loaded_messages[-1]["message_id"]) if loaded_messages else 0
+    )
+elif current_project_id is not None:
+    latest_message_id = get_latest_message_id(current_project_id)
+    if st.session_state.get("loaded_project_message_id") != latest_message_id:
+        st.session_state.messages = list_messages(current_project_id)
+        st.session_state.loaded_project_message_id = latest_message_id
 
 manager_profile = next(
     employee for employee in employees
@@ -445,9 +461,15 @@ with st.sidebar:
                 use_container_width=True,
             )
         if selected_project_id != current_project_id:
+            selected_messages = list_messages(selected_project_id)
             st.session_state.current_project_id = selected_project_id
             st.session_state.loaded_project_id = selected_project_id
-            st.session_state.messages = list_messages(selected_project_id)
+            st.session_state.messages = selected_messages
+            st.session_state.loaded_project_message_id = (
+                int(selected_messages[-1]["message_id"])
+                if selected_messages
+                else 0
+            )
             st.rerun()
         if delete_project_clicked:
             selected_project = next(
@@ -578,6 +600,7 @@ with st.sidebar:
                 st.error(f"대화를 초기화하지 못했습니다: {error}")
             else:
                 st.session_state.messages = []
+                st.session_state.loaded_project_message_id = 0
                 st.rerun()
 
 if current_project is None:
@@ -678,8 +701,6 @@ if workspace_view == "🏢 오피스":
         "작업실에서는 직원 상태를, 자료 확인 버튼에서는 실제 전달 내용을, 회의실에서는 저장된 팀 회의 발언을 볼 수 있습니다."
     )
     st.stop()
-
-st.session_state.messages = list_messages(current_project_id)
 
 st.markdown(
     f"""
@@ -1188,6 +1209,7 @@ if (
                         "content": "팀원 두 명의 의견을 받아 쉽게 정리해줘.",
                     }
                 )
+                st.session_state.loaded_project_message_id = consultation_message_id
                 st.session_state.workspace_view_request = "🏢 오피스"
                 st.toast(consultation_message)
                 st.rerun()
@@ -1259,6 +1281,7 @@ if external_review_requested:
                 },
             ]
         )
+        st.session_state.loaded_project_message_id = external_answer_id
         st.rerun()
 
 retry_saved_plan_input = None
@@ -1314,6 +1337,7 @@ if user_input:
                 "content": user_input,
             }
         )
+        st.session_state.loaded_project_message_id = user_message_id
         render_chat_message(
             st.session_state.messages[-1],
             len(st.session_state.messages) - 1,
@@ -1353,6 +1377,26 @@ if user_input:
                 and st.session_state.get(MANAGER_PLAN_REQUEST_STATE)
                 == current_project_id
             )
+            auto_idea_brief = None
+            if should_auto_explore_idea(
+                user_input,
+                is_manager_chat=chat_employee_id == ACTIVE_EMPLOYEE_ID,
+                is_plan_request=manager_plan_requested,
+            ):
+                chat_progress.researching_ideas()
+                auto_idea_brief = collect_idea_scout_brief(
+                    current_project,
+                    user_input,
+                )
+                if auto_idea_brief.web_used:
+                    chat_progress.research_ready(
+                        len(auto_idea_brief.sources)
+                    )
+                else:
+                    chat_progress.research_unavailable(
+                        auto_idea_brief.error_message
+                        or "검증 가능한 참고 자료가 없습니다."
+                    )
             manager_delegation_instruction = (
                 build_manager_delegation_instruction(
                     active_supporting_employees
@@ -1397,6 +1441,11 @@ if user_input:
                         + "현재 사용자는 너와 직접 대화하고 있다. "
                         + manager_collaboration_instruction
                         + manager_delegation_instruction
+                        + (
+                            auto_idea_brief.prompt_context
+                            if auto_idea_brief is not None
+                            else ""
+                        )
                     ),
                 },
                 *conversation_messages,
@@ -1508,6 +1557,14 @@ if user_input:
                     answer,
                     current_project["name"],
                 )
+            allowed_answer_urls = verified_source_urls(current_sources)
+            if auto_idea_brief is not None:
+                allowed_answer_urls.update(
+                    source["url"] for source in auto_idea_brief.sources
+                )
+            answer = sanitize_unverified_links(answer, allowed_answer_urls)
+            if auto_idea_brief is not None and auto_idea_brief.web_used:
+                answer += auto_idea_brief.source_markdown()
 
         chat_progress.complete()
         try:
@@ -1528,6 +1585,7 @@ if user_input:
                 "employee_name": chat_profile["name"],
             }
             st.session_state.messages.append(assistant_message)
+            st.session_state.loaded_project_message_id = assistant_message_id
             if manager_plan_requested and is_manager_plan_content(answer):
                 st.session_state.pop(MANAGER_PLAN_REQUEST_STATE, None)
                 st.session_state.onboarding_focus_plan_approval = current_project_id

@@ -75,6 +75,19 @@ if (-not (Test-Path -LiteralPath $appFile)) {
 
 Set-Location $projectRoot
 
+# 새 PowerShell 창을 열지 않아도 사용자 환경변수에 저장한 Tavily 키를
+# 이번 Streamlit 서버 프로세스에만 안전하게 전달합니다. 키 값은 출력하지 않습니다.
+if ([string]::IsNullOrWhiteSpace($env:TAVILY_API_KEY)) {
+    $storedTavilyKey = [Environment]::GetEnvironmentVariable(
+        "TAVILY_API_KEY",
+        "User"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($storedTavilyKey)) {
+        $env:TAVILY_API_KEY = $storedTavilyKey
+        Write-Host "[YOUFFICE] Tavily web search key is available." -ForegroundColor Green
+    }
+}
+
 Write-Host "[YOUFFICE] Starting system check..."
 & $pythonExe ".\tools\preflight_check.py"
 

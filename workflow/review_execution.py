@@ -37,6 +37,7 @@ from workflow.review import (
     review_target_employee_ids,
     review_verdict,
 )
+from workflow.source_quality import sanitize_unverified_links, verified_urls_from_source_context
 
 
 EmployeeResult = tuple[dict, str, int]
@@ -74,6 +75,7 @@ def run_review_cycle(
 
     successful_results = list(successful_results)
     failed_employee_names = list(failed_employee_names)
+    allowed_source_urls = verified_urls_from_source_context(source_context)
     review_results: list[EmployeeResult] = []
     unresolved_review_employee_ids: set[str] = set()
 
@@ -231,6 +233,10 @@ def run_review_cycle(
                 review_answer,
                 user_message["content"],
             )
+            review_answer = sanitize_unverified_links(
+                review_answer,
+                allowed_source_urls,
+            )
             verdict = review_verdict(review_answer)
             finish_employee_result(
                 review_result_id,
@@ -386,6 +392,10 @@ def run_review_cycle(
                 rework_input,
                 output_instruction=output_instruction,
                 required_markers=EMPLOYEE_RESULT_MARKERS,
+            )
+            rework_answer = sanitize_unverified_links(
+                rework_answer,
+                allowed_source_urls,
             )
             ensure_workflow_not_cancelled(task_id)
             if rework_answer == EMPTY_ANSWER_MESSAGE:
@@ -601,6 +611,10 @@ def run_review_cycle(
                 second_review_answer,
                 user_message["content"],
             )
+            second_review_answer = sanitize_unverified_links(
+                second_review_answer,
+                allowed_source_urls,
+            )
             second_verdict = review_verdict(second_review_answer)
             second_target_ids = (
                 original_target_ids
@@ -796,4 +810,3 @@ def run_review_cycle(
         waiting_for_user=waiting_for_user,
         pre_report_failures=pre_report_failures,
     )
-

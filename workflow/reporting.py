@@ -52,6 +52,7 @@ from workflow.structured_report import (
     parse_structured_report_json,
     render_structured_final_report,
 )
+from workflow.source_quality import sanitize_unverified_links, verified_source_urls
 
 
 def resolve_report_task_id(
@@ -258,6 +259,10 @@ def generate_project_report(
                 response.message.content,
                 report_material,
             )
+        report_content = sanitize_unverified_links(
+            report_content,
+            verified_source_urls(sources),
+        )
         report_title = (
             f"{project['name']} 프로젝트 "
             f"{'수정 보고서' if revision_source_report is not None else '보고서'} "
@@ -375,6 +380,7 @@ def retry_task_synthesis(
         if employee_workstream(employee, department)
         in ("memory", "planning", "technical", "general")
     }
+    sources = list_sources(project["id"])
 
     employee_reports = "\n\n".join(
         (
@@ -431,6 +437,10 @@ def retry_task_synthesis(
 
         if answer == EMPTY_ANSWER_MESSAGE:
             raise RuntimeError("최종 보고 응답을 확인하지 못했습니다.")
+        answer = sanitize_unverified_links(
+            answer,
+            verified_source_urls(sources),
+        )
         message_id = add_message(
             project["id"],
             "assistant",

@@ -1,3 +1,4 @@
 streamlit==1.60.0
 ollama==0.6.2
 Markdown==3.10.3
+ddgs==9.16.0

@@ -11,6 +11,7 @@ from database_activity_queries import (
     list_team_tasks as _list_team_tasks,
 )
 from database_project_queries import (
+    get_latest_message_id as _get_latest_message_id,
     get_project as _get_project,
     list_messages as _list_messages,
     list_projects as _list_projects,
@@ -640,6 +641,15 @@ def list_messages(
     """선택한 프로젝트의 대화를 오래된 순서대로 반환합니다."""
 
     return _list_messages(_connect, project_id, database_path)
+
+
+def get_latest_message_id(
+    project_id: int,
+    database_path: Path = DATABASE_PATH,
+) -> int:
+    """Return the latest message ID for inexpensive chat refresh checks."""
+
+    return _get_latest_message_id(_connect, project_id, database_path)
 
 
 def clear_project_messages(

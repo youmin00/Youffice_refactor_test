@@ -24,6 +24,7 @@ from database import (
 from workflow.assignment import ACTIVE_EMPLOYEE_ID
 from workflow.errors import workflow_error_detail
 from workflow.review import WorkflowCancelled, ensure_workflow_not_cancelled
+from workflow.source_quality import reference_urls_in_text, sanitize_unverified_links
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ def run_team_meeting(
         )
         for employee, answer, _ in successful_results
     )
+    allowed_meeting_urls = reference_urls_in_text(compact_reports)
     meeting_opinion_instruction = (
         "팀 회의에 참여한 직원으로서 다른 직원의 실제 결과와 앞선 발언을 읽고 "
         "자기 전문 역할의 관점에서 연결점, 충돌, 위험과 수정 제안을 말한다. "
@@ -159,6 +161,10 @@ def run_team_meeting(
                 meeting_input,
                 output_instruction=meeting_opinion_instruction,
                 required_markers=MEETING_OPINION_MARKERS,
+            )
+            meeting_opinion = sanitize_unverified_links(
+                meeting_opinion,
+                allowed_meeting_urls,
             )
             ensure_workflow_not_cancelled(task_id)
             if meeting_opinion == EMPTY_ANSWER_MESSAGE:
@@ -257,6 +263,10 @@ def run_team_meeting(
             conclusion_input,
             output_instruction=meeting_conclusion_instruction,
             required_markers=MEETING_CONCLUSION_MARKERS,
+        )
+        meeting_conclusion = sanitize_unverified_links(
+            meeting_conclusion,
+            allowed_meeting_urls,
         )
         ensure_workflow_not_cancelled(task_id)
         if meeting_conclusion == EMPTY_ANSWER_MESSAGE:

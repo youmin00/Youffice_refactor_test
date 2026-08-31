@@ -24,6 +24,7 @@ EXPECTED_PARAMETERS = {
     ),
     "list_projects": ("database_path",),
     "get_project": ("project_id", "database_path"),
+    "get_latest_message_id": ("project_id", "database_path"),
     "delete_project": ("project_id", "database_path"),
     "add_message": (
         "project_id", "role", "content", "employee_id", "database_path",
@@ -349,6 +350,7 @@ def _assert_temporary_database_flow() -> None:
         )
 
         assert database.get_project(project_id, database_path)["name"] == "계약 테스트"
+        assert database.get_latest_message_id(project_id, database_path) == report_message_id
         assert database.get_team_task(task_id, database_path)["id"] == task_id
         assert database.get_team_meeting(task_id, database_path)["id"] == meeting_id
         assert len(database.list_meeting_turns(meeting_id, database_path)) == 1
