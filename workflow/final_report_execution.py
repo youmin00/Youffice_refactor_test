@@ -1,4 +1,4 @@
-"""검수 완료 결과를 구조화 최종 보고서로 생성하고 저장합니다."""
+"""검수 완료 결과를 구조화 프로젝트 준비서로 생성하고 저장합니다."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def run_final_report(
     meeting_context: str,
     failed_employee_names: list[str],
 ) -> FinalReportExecutionResult:
-    """검수 통과 결과만 최종 보고서로 저장하고 실패 상태를 반환합니다."""
+    """검수 통과 결과만 프로젝트 준비서로 저장하고 실패 상태를 반환합니다."""
 
     failed_employee_names = list(failed_employee_names)
     results_by_employee_id = {
@@ -118,7 +118,7 @@ def run_final_report(
                     project_id,
                     ACTIVE_EMPLOYEE_ID,
                     "waiting",
-                    f"{final_employee['name']} 최종 보고 대기",
+                    f"{final_employee['name']} 프로젝트 준비서 종합 대기",
                     task_id,
                 )
                 set_employee_activity(
@@ -202,7 +202,7 @@ def run_final_report(
                     project_id,
                     final_employee["id"],
                     "completed",
-                    "최종 보고 전달 완료",
+                    "프로젝트 준비서 전달 완료",
                     task_id,
                 )
             workflow_message_id = add_message(
@@ -215,7 +215,7 @@ def run_final_report(
                 project_id,
                 final_employee["id"],
                 (
-                    f"{project['name']} 최종 보고서 "
+                    f"{project['name']} 프로젝트 준비서 "
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M')}"
                 ),
                 synthesis_answer,

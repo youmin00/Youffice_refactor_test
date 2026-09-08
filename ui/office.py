@@ -49,12 +49,12 @@ def office_employee_states(
     }
     activity_states = {
         "waiting": ("waiting", "대기 중"),
-        "assigned": ("waiting", "업무 배정됨"),
-        "working": ("working", "작업 중"),
-        "reviewing": ("reviewing", "검수 중"),
-        "reworking": ("working", "재작업 중"),
-        "synthesizing": ("working", "결과 종합 중"),
-        "completed": ("complete", "업무 완료"),
+        "assigned": ("waiting", "준비 업무 배정됨"),
+        "working": ("working", "자료 작성 중"),
+        "reviewing": ("reviewing", "문서 검토 중"),
+        "reworking": ("working", "자료 보완 중"),
+        "synthesizing": ("working", "준비서 종합 중"),
+        "completed": ("complete", "준비 자료 완료"),
         "error": ("error", "오류 확인 필요"),
         "inactive": ("inactive", "비활성"),
     }
@@ -71,7 +71,7 @@ def office_employee_states(
     recent_tasks = list_team_tasks(project_id, limit=1)
     if not recent_tasks:
         if ACTIVE_EMPLOYEE_ID in states and ACTIVE_EMPLOYEE_ID not in saved_activities:
-            states[ACTIVE_EMPLOYEE_ID] = ("ready", "업무 접수 중")
+            states[ACTIVE_EMPLOYEE_ID] = ("ready", "아이디어 접수 중")
         return states, None
 
     latest_task = recent_tasks[0]
@@ -87,14 +87,14 @@ def office_employee_states(
             states[ACTIVE_EMPLOYEE_ID] = ("inactive", "사용자가 작업 중단")
     if ACTIVE_EMPLOYEE_ID in states and ACTIVE_EMPLOYEE_ID not in saved_activities:
         manager_states = {
-            "pending": ("waiting", "배정 대기"),
-            "running": ("working", "업무 조율 중"),
-            "completed": ("complete", "협업 완료"),
+            "pending": ("waiting", "준비 계획 승인 대기"),
+            "running": ("working", "준비 업무 조율 중"),
+            "completed": ("complete", "준비서 완료"),
             "failed": ("error", "결과 확인 필요"),
         }
         states[ACTIVE_EMPLOYEE_ID] = manager_states.get(
             task_status,
-            ("ready", "업무 접수 중"),
+            ("ready", "아이디어 접수 중"),
         )
         if task_control_state == "waiting_for_user":
             states[ACTIVE_EMPLOYEE_ID] = ("waiting", "사용자 답변 대기")
@@ -107,9 +107,9 @@ def office_employee_states(
         if result["employee_id"] in saved_activities:
             continue
         result_states = {
-            "running": ("working", "작업 중"),
-            "completed": ("complete", "업무 완료"),
-            "failed": ("error", "작업 오류"),
+            "running": ("working", "자료 작성 중"),
+            "completed": ("complete", "준비 자료 완료"),
+            "failed": ("error", "자료 작성 오류"),
         }
         states[result["employee_id"]] = result_states.get(
             result["status"],
@@ -457,20 +457,20 @@ def render_pixel_office(
             if to_employee is not None
             else latest_handoff["to_employee_id"]
         )
-        handoff_summary = f"📨 업무 전달 중 · {from_name} → {to_name}"
+        handoff_summary = f"📨 준비 자료 전달 중 · {from_name} → {to_name}"
     else:
-        handoff_summary = "📭 새로운 업무 전달 대기 중"
+        handoff_summary = "📭 새로운 준비 자료 대기 중"
 
     task_status_labels = {
         "pending": "승인 대기",
-        "running": "팀 협업 진행 중",
-        "completed": "최근 협업 완료",
-        "failed": "확인 필요한 업무 있음",
+        "running": "제작 준비 협업 중",
+        "completed": "최근 준비서 작성 완료",
+        "failed": "확인 필요한 준비 업무 있음",
     }
     current_status = (
         task_status_labels.get(latest_task["status"], latest_task["status"])
         if latest_task is not None
-        else "새 업무 대기 중"
+        else "새 프로젝트 아이디어 대기 중"
     )
     latest_request = (
         latest_task["request"] if latest_task is not None else project["goal"]
@@ -530,9 +530,9 @@ def render_pixel_office(
         </div>
         <div class="game-stat-strip">
             <div><strong>{len(enabled_employees)}</strong><span>활성 직원</span></div>
-            <div><strong>{state_counts.get('working', 0)}</strong><span>작업 중</span></div>
-            <div><strong>{state_counts.get('reviewing', 0)}</strong><span>검수 중</span></div>
-            <div><strong>{progress}%</strong><span>전체 진행률</span></div>
+            <div><strong>{state_counts.get('working', 0)}</strong><span>자료 작성 중</span></div>
+            <div><strong>{state_counts.get('reviewing', 0)}</strong><span>문서 검토 중</span></div>
+            <div><strong>{progress}%</strong><span>준비서 진행률</span></div>
         </div>
         <div class="pixel-office-stage" style="background-image:url('{background_data}')">
             {''.join(room_labels)}
@@ -562,7 +562,7 @@ def render_pixel_office(
                     <em><i></i>{html.escape(focus_label)}</em>
                 </div>
             </a>
-            <div class="game-progress-head"><span>프로젝트 진행률</span><strong>{progress}%</strong></div>
+            <div class="game-progress-head"><span>제작 준비 진행률</span><strong>{progress}%</strong></div>
             <div class="game-progress-track"><span style="width:{progress}%"></span></div>
             <div class="game-panel-section-title">실시간 팀 현황</div>
             <div class="game-team-list">{''.join(team_cards)}</div>
@@ -613,18 +613,18 @@ def render_employee_room_office(
         to_name = to_employee["name"] if to_employee else latest_to_id
         handoff_summary = f"📨 최근 자료 전달 · {from_name} → {to_name}"
     else:
-        handoff_summary = "📭 새로운 업무 전달 대기 중"
+        handoff_summary = "📭 새로운 준비 자료 대기 중"
 
     task_status_labels = {
         "pending": "승인 대기",
-        "running": "팀 협업 진행 중",
-        "completed": "최근 협업 완료",
-        "failed": "확인 필요한 업무 있음",
+        "running": "제작 준비 협업 중",
+        "completed": "최근 준비서 작성 완료",
+        "failed": "확인 필요한 준비 업무 있음",
     }
     current_status = (
         task_status_labels.get(latest_task["status"], latest_task["status"])
         if latest_task is not None
-        else "새 업무 대기 중"
+        else "새 프로젝트 아이디어 대기 중"
     )
     latest_request = (
         latest_task["request"] if latest_task is not None else project["goal"]
@@ -645,7 +645,7 @@ def render_employee_room_office(
         "employee_6b1b55c815ab4954b4ee8f677485ce17": "기획실",
         "employee_037752c7b73248eb9a92e42924cfa81c": "기술 설계실",
         "employee_9369af7654824819a7f462d39bd60d0b": "안전·품질 검수실",
-        "employee_45548ccdc9e14ed3bbcfd99aedcb311f": "최종 보고서실",
+        "employee_45548ccdc9e14ed3bbcfd99aedcb311f": "프로젝트 준비서실",
     }
     room_accents = ["#7aa2ff", "#ff9bb5", "#f5b45b", "#7cc7d8", "#73a8ff", "#e2a46e"]
     status_icons = {
@@ -895,9 +895,9 @@ def render_employee_room_office(
         </div>
         <div class="game-stat-strip employee-office-stats">
             <div><strong>{len(enabled_employees)}</strong><span>활성 직원</span></div>
-            <div><strong>{state_counts.get('working', 0)}</strong><span>작업 중</span></div>
-            <div><strong>{state_counts.get('reviewing', 0)}</strong><span>검수 중</span></div>
-            <div><strong>{progress}%</strong><span>전체 진행률</span></div>
+            <div><strong>{state_counts.get('working', 0)}</strong><span>자료 작성 중</span></div>
+            <div><strong>{state_counts.get('reviewing', 0)}</strong><span>문서 검토 중</span></div>
+            <div><strong>{progress}%</strong><span>준비서 진행률</span></div>
         </div>
         <div class="employee-room-grid">{''.join(room_cards)}</div>
         <a class="meeting-room-card{meeting_state_class}" href="?meeting_room=1" target="_self" aria-label="팀 회의실 열기">

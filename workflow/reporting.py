@@ -120,7 +120,7 @@ def generate_project_report(
     )
     if revision_source_report is None and not has_completed_team_work:
         st.info(
-            "아직 완료된 팀 작업이 없어요. 최종 보고서 대신 유키와 다음 설계 결정을 먼저 정해보세요."
+            "아직 완료된 준비 업무가 없어요. 유키와 핵심 조건을 정한 뒤 제작 준비 계획부터 만들어보세요."
         )
         return
     report_employee_lookup = {
@@ -234,9 +234,9 @@ def generate_project_report(
                                         if employee_data[0]["id"] != report_employee["id"]
                                     ],
                                 )
-                                + "저장된 실제 기록만 사용해 전문적인 한국어 Markdown 보고서를 작성한다. "
-                                "구성은 프로젝트 개요, 요구사항과 제약, 수행 내용, 직원별 핵심 결과, "
-                                "검수 및 재작업, 확정 결정, 미해결 오류와 위험, 다음 단계, 출처 순서로 한다. "
+                                + "저장된 실제 기록만 사용해 전문적인 한국어 Markdown 프로젝트 문서를 작성한다. "
+                                "구성은 프로젝트 개요, 확정 요구사항과 기본 가정, 준비 내용, 직원별 핵심 결과, "
+                                "검토 및 보완, 사용자가 직접 할 일, 외부 도구로 넘길 일, 테스트 계획, 미해결 위험, 출처 순서로 한다. "
                                 "자료가 없거나 확인되지 않은 내용은 사실처럼 만들지 않는다. "
                                 + (
                                     "기존 보고서의 확인된 사실과 전체 구조는 유지하되 사용자 수정 요청을 "
@@ -253,7 +253,7 @@ def generate_project_report(
                     ],
                     think=False,
                     stream=False,
-                    answer_prefix="# 프로젝트 보고서\n",
+                    answer_prefix="# 프로젝트 준비서 및 진행 보고\n",
                 )
             report_content = final_answer_with_retry(
                 response.message.content,
@@ -451,7 +451,7 @@ def retry_task_synthesis(
             project["id"],
             final_employee["id"],
             (
-                f"{project['name']} 재종합 최종 보고서 "
+                f"{project['name']} 재종합 프로젝트 문서 "
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M')}"
             ),
             answer,

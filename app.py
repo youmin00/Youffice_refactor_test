@@ -122,6 +122,7 @@ from conversation.employee_prompts import build_employee_system_prompt
 from conversation.project_collaboration import (
     build_team_plan_request_prompt,
     build_manager_collaboration_instruction,
+    is_explicit_plan_request,
     is_manager_plan_content,
     is_substantially_repeated_reply,
 )
@@ -755,13 +756,13 @@ report_action_column, report_caption_column = st.columns(
 )
 with report_action_column:
     if st.button(
-        "팀 작업 결과 안내 생성",
+        "프로젝트 준비서 생성",
         key=f"generate_report_{current_project_id}",
         disabled=not has_completed_team_work,
         help=(
-            "팀 작업이 끝난 뒤에만 결과 안내를 만들 수 있어요. 아이디어를 구체화하는 단계라면 유키와 먼저 다음 설계 결정을 정해보세요."
+            "팀의 준비 자료 작성과 검토가 끝난 뒤에만 준비서를 만들 수 있어요. 아이디어 단계라면 유키와 핵심 조건부터 정해보세요."
             if not has_completed_team_work
-            else "팀이 작성한 문서와 검토 기록을 바탕으로, 다음 설계 결정을 안내합니다. 실제 제품 완성 보고서는 아닙니다."
+            else "팀이 작성한 요구사항·조사·기술·위험·테스트 자료를 다음 행동이 가능한 준비서로 정리합니다."
         ),
         use_container_width=True,
     ):
@@ -773,12 +774,12 @@ with report_action_column:
         )
 with report_caption_column:
     st.caption(
-        f"결과 안내 담당: {report_employee_data[0]['name']} · "
-        f"저장된 결과 안내 {len(current_reports)}건"
+        f"준비서 담당: {report_employee_data[0]['name']} · "
+        f"저장된 프로젝트 문서 {len(current_reports)}건"
     )
 
 if current_reports:
-    with st.expander(f"📄 생성된 보고서 · {len(current_reports)}건"):
+    with st.expander(f"📄 프로젝트 준비서·진행 보고서 · {len(current_reports)}건"):
         for report in current_reports:
             report_approval = report_approvals_by_report_id[report["id"]]
             with st.container(border=True):
@@ -808,7 +809,7 @@ if current_reports:
                     approval_column, revision_column = st.columns(2)
                     with approval_column:
                         if st.button(
-                            "이 보고서 승인",
+                            "이 프로젝트 문서 승인",
                             key=f"approve_report_{report['id']}",
                             type="primary",
                             use_container_width=True,
@@ -828,7 +829,7 @@ if current_reports:
                             st.session_state.report_revision_id = report["id"]
                 st.download_button(
                     (
-                        "승인된 Markdown 보고서 다운로드"
+                        "승인된 Markdown 프로젝트 문서 다운로드"
                         if report_approval["status"] == "approved"
                         else "Markdown 초안 다운로드"
                     ),
@@ -1027,7 +1028,7 @@ for message_index, message in enumerate(st.session_state.messages):
     ):
         message_key = structured_report_revision_key(message, message_index)
         if st.button(
-            "최종 보고서 수정",
+            "프로젝트 준비서 수정",
             key=f"structured_report_revision_{message_key}",
         ):
             st.session_state.structured_report_revision_message_key = message_key
@@ -1217,7 +1218,7 @@ if (
                 st.warning(consultation_message)
     with quick_plan_column:
         if st.button(
-            "🤝 지금 내용으로 팀에 맡기기",
+            "🧭 현재 내용으로 제작 준비 계획",
             type="primary",
             key=f"quick_team_plan_{current_project_id}",
             use_container_width=True,
@@ -1236,7 +1237,7 @@ if (
             help=str(external_status["message"]),
         )
         st.caption(
-            "의견 받기: 실행 전 두 팀원의 관점으로 확인해요. · 팀에 맡기기: 계획을 승인한 뒤 실제 작업을 시작해요."
+            "의견 받기: 두 팀원이 선택지와 위험을 확인해요. · 준비 계획: 승인 후 요구사항·조사·기술·테스트 자료를 만들어요."
             if not team_consultation_running
             else "팀원들이 의견을 검토 중이에요. 오피스에서 상태를 확인한 뒤 대화로 돌아오세요."
         )
@@ -1306,10 +1307,17 @@ if (
         st.session_state[MANAGER_PLAN_REQUEST_STATE] = current_project_id
         retry_saved_plan_input = saved_plan_request
 
-typed_user_input = st.chat_input(f"{chat_profile['name']}에게 업무를 입력하세요.")
+typed_user_input = st.chat_input(f"{chat_profile['name']}에게 프로젝트 이야기를 입력하세요.")
 if typed_user_input and not guided_user_input and not quick_team_plan_input:
-    # 계획 버튼을 누른 뒤 사용자가 별도 문장을 직접 입력했다면 자연 대화로 처리합니다.
-    st.session_state.pop(MANAGER_PLAN_REQUEST_STATE, None)
+    typed_plan_request = (
+        chat_employee_id == ACTIVE_EMPLOYEE_ID
+        and is_explicit_plan_request(typed_user_input)
+    )
+    if typed_plan_request:
+        st.session_state[MANAGER_PLAN_REQUEST_STATE] = current_project_id
+    else:
+        # 계획 버튼을 누른 뒤 별도 대화를 입력했다면 자연 대화로 되돌립니다.
+        st.session_state.pop(MANAGER_PLAN_REQUEST_STATE, None)
 user_input = (
     guided_user_input
     or quick_team_plan_input
@@ -1355,7 +1363,7 @@ if user_input:
             is_plan_request=manager_plan_in_progress,
         )
         spinner_text = (
-            "유키가 팀 계획 초안을 만들고 형식을 확인하고 있어요..."
+            "유키가 제작 준비 계획을 만들고 형식을 확인하고 있어요..."
             if chat_employee_id == ACTIVE_EMPLOYEE_ID
             and st.session_state.get(MANAGER_PLAN_REQUEST_STATE)
             == current_project_id
@@ -1531,8 +1539,8 @@ if user_input:
                             "content": (
                                 "방금 후보 답변은 직전 유키 답변을 반복했습니다. "
                                 "같은 인사나 도움 제안을 다시 쓰지 말고, 사용자의 "
-                                "마지막 말에 맞춰 바로 이어지는 구체적인 다음 행동 "
-                                "또는 꼭 필요한 질문 하나만 새로 답하세요.\n/no_think"
+                                "마지막 말에 맞춰 현재 단계 지침이 허용하는 구체적인 다음 행동을 답하세요. "
+                                "질문 한도에 도달했다면 새 질문을 만들지 마세요.\n/no_think"
                             ),
                         },
                     ],
@@ -1662,13 +1670,14 @@ if (
                         )
                     else:
                         st.info(
-                            "팀장의 계획을 확인해주세요. 승인해야 실제 직원별 AI 호출과 "
-                            "업무 전달이 시작됩니다."
+                            "유키의 제작 준비 계획을 확인해주세요. 승인하면 직원별 AI가 "
+                            "요구사항·조사·기술·위험·테스트 자료를 작성하고 검토합니다. "
+                            "실제 구매·CAD·조립·실험을 완료하는 단계는 아닙니다."
                         )
                     approval_column, revision_column = st.columns(2)
                     with approval_column:
                         if st.button(
-                            "계획 승인 및 업무 시작",
+                            "계획 승인 및 팀 검토 시작",
                             type="primary",
                             use_container_width=True,
                             key=f"approve_message_{source_message_id}",

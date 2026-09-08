@@ -7,10 +7,14 @@ from typing import Any
 import streamlit as st
 
 from conversation.project_collaboration import (
+    MAX_GUIDED_QUESTIONS,
     build_idea_conversation_start_prompt,
     build_next_idea_question_prompt,
+    build_supplemental_question_prompt,
     build_team_plan_request_prompt,
     is_manager_plan_content,
+    manager_guided_turn_count,
+    supplemental_question_count,
 )
 
 
@@ -51,6 +55,8 @@ def project_onboarding_stage(
         return "waiting_for_yuki"
     if is_manager_plan_content(latest_manager_answer.get("content")):
         return "plan_ready"
+    if manager_guided_turn_count(messages) >= MAX_GUIDED_QUESTIONS:
+        return "draft_ready"
     return "idea_conversation"
 
 
@@ -79,6 +85,8 @@ def _step_states(stage: str) -> tuple[str, str, str, str]:
         return "done", "current", "next", "next"
     if stage == "idea_conversation":
         return "done", "current", "next", "next"
+    if stage == "draft_ready":
+        return "done", "done", "current", "next"
     return "done", "done", "done", "current"
 
 
@@ -100,24 +108,25 @@ def render_project_onboarding(
     just_created = st.session_state.pop("new_project_onboarding_id", None) == project_id
     if just_created:
         st.success(
-            "프로젝트가 만들어졌습니다. 유키와 편하게 대화하며 아이디어를 정리한 뒤, "
-            "준비됐을 때 팀 계획을 만들고 승인하면 됩니다."
+            "프로젝트가 만들어졌습니다. 유키와 핵심 조건만 짧게 정리한 뒤, "
+            "제작 준비 계획을 만들고 팀의 조사·설계 검토를 시작할 수 있습니다."
         )
 
     with st.container(border=True):
-        st.markdown("### 🚀 유키와 함께 프로젝트 만들기")
+        st.markdown("### 🚀 아이디어를 제작 가능한 계획으로 바꾸기")
         st.caption(
-            "처음부터 전체 설계나 부품명을 알 필요가 없습니다. 유키가 한 번에 중요한 "
-            "질문 하나씩 물으며 아이디어를 함께 구체화합니다."
+            "처음부터 설계나 부품명을 알 필요가 없습니다. 유키는 처음 핵심 질문을 최대 "
+            f"{MAX_GUIDED_QUESTIONS}개만 한 뒤 초안을 먼저 보여 줍니다. 이후에는 원하는 만큼 중요한 항목을 "
+            "하나씩 구체화할 수 있고, 사용자가 유키에게 묻는 질문은 이 횟수에 포함되지 않습니다."
         )
 
         states = _step_states(stage)
         step_columns = st.columns(4, gap="small")
         steps = (
             ("1. 아이디어 공유", "만들고 싶은 결과 말하기"),
-            ("2. 유키와 구체화", "질문과 추천으로 조건 정하기"),
-            ("3. 팀 계획", "직원 담당과 순서 만들기"),
-            ("4. 승인·업무 시작", "확인 후 실제 팀 실행"),
+            ("2. 핵심 조건 정리", "첫 질문은 최대 3개"),
+            ("3. 초안·보충 확인", "필요한 질문만 선택"),
+            ("4. 계획 확정", "팀의 자료 작성 시작"),
         )
         for column, (title, description), state in zip(step_columns, steps, states):
             with column:
@@ -162,33 +171,82 @@ def render_project_onboarding(
                 return build_idea_conversation_start_prompt(project)
         elif stage == "idea_conversation":
             st.info(
-                "유키의 질문에 채팅으로 답하며 계속 다듬어도 됩니다. 준비됐다고 느낄 "
-                "때만 팀 계획으로 넘어가세요."
+                "유키의 질문에 아는 만큼만 답하세요. 궁금한 것을 반대로 물어보면 유키가 먼저 답하며, "
+                "그 답변은 핵심 질문 횟수에 포함되지 않습니다. 언제든 현재 내용이나 기본 가정으로 준비 계획을 만들 수 있습니다."
             )
-            next_column, plan_column = st.columns(2, gap="medium")
+            next_column, plan_column, default_column = st.columns(3, gap="medium")
             with next_column:
                 if st.button(
-                    "다음으로 정할 것 물어보기",
+                    "핵심 질문 하나 더",
                     use_container_width=True,
                     key=f"onboarding_next_question_{project_id}",
                 ):
                     return build_next_idea_question_prompt()
             with plan_column:
                 if st.button(
-                    "현재 아이디어로 팀 계획 만들기",
+                    "현재 내용으로 준비 계획",
                     type="primary",
                     use_container_width=True,
                     key=f"onboarding_make_plan_{project_id}",
                 ):
                     st.session_state[MANAGER_PLAN_REQUEST_STATE] = project_id
                     return build_team_plan_request_prompt(project)
+            with default_column:
+                if st.button(
+                    "모르는 건 기본 가정으로",
+                    use_container_width=True,
+                    key=f"onboarding_default_plan_{project_id}",
+                ):
+                    st.session_state[MANAGER_PLAN_REQUEST_STATE] = project_id
+                    return build_team_plan_request_prompt(
+                        project,
+                        use_default_assumptions=True,
+                    )
+        elif stage == "draft_ready":
+            supplemental_count = supplemental_question_count(messages)
+            st.success(
+                "첫 핵심 질문 단계가 끝났습니다. 유키가 정리한 초안을 기준으로 바로 계획을 만들거나, "
+                "결과에 영향을 주는 중요한 항목을 원하는 만큼 하나씩 더 확인할 수 있습니다."
+            )
+            st.caption(
+                f"선택형 보충 질문 {supplemental_count}회 진행 · "
+                "횟수 제한은 없으며 질문마다 필요한 이유와 답에 따라 달라지는 점을 먼저 보여 줍니다."
+            )
+            question_column, plan_column, default_column = st.columns(3, gap="medium")
+            with question_column:
+                if st.button(
+                    "중요한 항목 하나 더 구체화",
+                    use_container_width=True,
+                    key=f"onboarding_supplemental_{project_id}",
+                ):
+                    return build_supplemental_question_prompt(project)
+            with plan_column:
+                if st.button(
+                    "현재 내용으로 준비 계획",
+                    type="primary",
+                    use_container_width=True,
+                    key=f"onboarding_draft_ready_plan_{project_id}",
+                ):
+                    st.session_state[MANAGER_PLAN_REQUEST_STATE] = project_id
+                    return build_team_plan_request_prompt(project)
+            with default_column:
+                if st.button(
+                    "모르는 건 기본 가정으로",
+                    use_container_width=True,
+                    key=f"onboarding_draft_ready_default_{project_id}",
+                ):
+                    st.session_state[MANAGER_PLAN_REQUEST_STATE] = project_id
+                    return build_team_plan_request_prompt(
+                        project,
+                        use_default_assumptions=True,
+                    )
         else:
             st.success(
-                "유키의 팀 계획이 준비됐습니다. 아래의 ‘계획 승인 및 업무 시작’ 버튼을 "
-                "누르면 실제 직원 협업이 시작됩니다."
+                "유키의 제작 준비 계획이 마련됐습니다. 아래 승인 영역에서 내용을 확인하면 "
+                "직원들이 요구사항·조사·기술·위험·테스트 자료를 작성하고 서로 검토합니다."
             )
             if st.button(
-                "팀 계획과 시작 버튼으로 이동",
+                "제작 준비 계획 확인하기",
                 use_container_width=True,
                 key=f"onboarding_focus_plan_{project_id}",
             ):

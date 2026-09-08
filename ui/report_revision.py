@@ -1,4 +1,4 @@
-"""저장된 보고서와 채팅 최종 보고서의 수정 요청 dialog."""
+"""저장된 프로젝트 준비서와 진행 보고서의 수정 요청 dialog."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def clear_structured_report_revision_dialog() -> None:
 
 
 @st.dialog(
-    "채팅 최종 보고서 수정",
+    "채팅 프로젝트 준비서 수정",
     width="large",
     dismissible=True,
     on_dismiss=clear_structured_report_revision_dialog,
@@ -43,11 +43,11 @@ def show_structured_final_report_revision(
     message_index: int,
     report_employee: dict,
 ) -> None:
-    """채팅에 저장된 최종 보고서를 새 메시지로 안전하게 수정합니다."""
+    """채팅에 저장된 프로젝트 준비서를 새 메시지로 안전하게 수정합니다."""
 
     message_key = structured_report_revision_key(message, message_index)
-    st.caption("원본 보고서는 유지되고, 수정본은 새 채팅 메시지로 추가됩니다.")
-    with st.expander("수정 대상 보고서 확인"):
+    st.caption("원본 프로젝트 문서는 유지되고, 수정본은 새 채팅 메시지로 추가됩니다.")
+    with st.expander("수정 대상 프로젝트 문서 확인"):
         st.markdown(message["content"])
 
     with st.form(f"structured_report_revision_form_{message_key}"):
@@ -85,7 +85,7 @@ def show_structured_final_report_revision(
         return
 
     if not is_structured_final_report(revision_result.content):
-        st.error("수정 후 최종 보고서 형식을 확인하지 못해 저장하지 않았습니다.")
+        st.error("수정 후 프로젝트 준비서 형식을 확인하지 못해 저장하지 않았습니다.")
         return
 
     employee_id = message.get("employee_id") or report_employee["id"]
@@ -108,7 +108,7 @@ def show_structured_final_report_revision(
 
 
 @st.dialog(
-    "최종 보고서 수정 요청",
+    "프로젝트 문서 수정 요청",
     width="large",
     dismissible=True,
     on_dismiss=clear_report_revision_dialog,

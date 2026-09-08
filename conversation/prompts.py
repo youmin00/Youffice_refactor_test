@@ -23,15 +23,17 @@ def build_project_context(project: dict) -> str:
         project_notes = project_notes.removeprefix(BEGINNER_GUIDANCE_MARKER).strip()
         context_parts.append(
             "진행 방식: 아직 설계가 완성되지 않았을 수 있다. "
-            "현재 단계에서 꼭 필요한 질문만 쉬운 말로 한 번에 1~2개씩 묻고, "
-            "사용자가 모르는 선택에는 간단한 예시와 추천 이유를 함께 설명한다."
+            "현재 단계에서 꼭 필요한 질문만 한 답변에 최대 1개, 전체 구체화 과정에서 최대 3개까지 묻고, "
+            "사용자가 모르는 선택에는 간단한 예시, 추천 이유와 기본 가정을 함께 제시한다. "
+            "질문 한도에 도달하면 더 묻지 말고 현재 정보로 제작 준비 초안을 만든다."
         )
     if project_notes:
         context_parts.append(f"현재 알고 있거나 보유한 내용: {project_notes}.")
 
     context_parts.append(
         "날짜와 예산을 임의로 전제하지 말고, 모든 답변은 이 프로젝트의 목표와 "
-        "사용자가 지금까지 알려준 조건을 우선하여 작성한다."
+        "사용자가 지금까지 알려준 조건을 우선하여 작성한다. AI가 직접 확인하지 않은 구매·CAD 도면·조립·"
+        "코드 실행·성능 시험을 완료했다고 표현하지 않고, 제안·준비 자료와 실제 실행 결과를 구분한다."
     )
     return " ".join(context_parts) + " "
 
