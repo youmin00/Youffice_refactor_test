@@ -8,6 +8,10 @@ Python · Streamlit · Ollama · Qwen3 8B · SQLite
 
 </div>
 
+> **개발 상태: 진행 중**
+>
+> YOUFFICE는 개인 포트폴리오를 위해 개발 중인 프로젝트입니다. 현재 핵심 대화·협업·기록 관리 흐름은 구현되어 있으며, 기능 완성도와 사용자 경험을 계속 개선하고 있습니다.
+
 ![YOUFFICE 픽셀 오피스](static/youffice_pixel_office.png)
 
 ## 프로젝트 소개
