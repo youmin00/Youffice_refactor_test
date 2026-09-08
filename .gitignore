@@ -13,3 +13,7 @@ data/codex_backups/
 data/runtime/
 *.log
 *.db
+
+# 포트폴리오 공개본에서 제외할 개인 개발 자료
+/Youffice_Codex_인수인계_및_향후_작업계획.txt
+/참고 목표.mp4
