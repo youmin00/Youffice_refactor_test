@@ -90,8 +90,8 @@ flowchart LR
 ### 2. 저장소와 Python 환경 준비
 
 ```powershell
-git clone https://github.com/youmin00/Youffice_refactor_test.git
-cd Youffice_refactor_test
+git clone https://github.com/youmin00/Youffice.git
+cd Youffice
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -148,7 +148,7 @@ setx YOUFFICE_CLAUDE_MODEL "사용할_모델_ID"
 ## 프로젝트 구조
 
 ```text
-Youffice_refactor_test/
+Youffice/
 ├─ app.py                   # Streamlit 앱 진입점과 화면 연결
 ├─ database.py              # SQLite 스키마와 핵심 데이터 API
 ├─ conversation/            # 직원 프롬프트, 대화 상태, 응답 검증
